@@ -10,7 +10,7 @@ const Pessoas = sequelize.define('Pessoas', {
       Pessoas.hasMany(models.Turmas, {
         foreignKey: 'docente_id',
       })
-      Pessoas.hasMany(models.Matriculaas, {
+      Pessoas.hasMany(models.Matriculas, {
         foreignKey: 'estudante_id',
       })
   };
