@@ -1,13 +1,26 @@
-const { where } = require('sequelize')
-const database = require('../models')
+// const { where } = require('sequelize')
+// const database = require('../models')
+// const Sequelize = require('sequelize')
+const { PessoasServices } = require('../services')
+const pessoasServices = new PessoasServices()
 
 class PessoaController {
+    // Buscar todas as pessoas no registro que estiverem ATIVAS
+    static async pegaPessoasAtivas(req, res) {
+        try {
+            const pessoasAtivas = await pessoasServices.pegaRegistrosAtivos()
+            return res.status(200).json(pessoasAtivas)
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
     // Buscar todas as pessoas no registro
     static async pegaTodasAsPessoas(req, res) {
         try {
-            const todasAsPessoas = await database.Pessoas.findAll()
+            const todasAsPessoas = await pessoasServices.pegaTodosOsRegistros()
             return res.status(200).json(todasAsPessoas)
-        } catch (console) {
+        } catch (error) {
             return res.status(500).json(error.message)
         }
     }
@@ -57,6 +70,16 @@ class PessoaController {
         }
     }
 
+    static async restauraPessoa(req, res) {
+        const { id } = req.params
+        try {
+            await database.Pessoas.restore({ where: { id: Number(id) } })
+            return res.status(200).json({ mensagem: `id ${id} restaurado` })
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
     // http://localhost:3000/pessoas/1/matricula/5
     // http://localhost:3000/pessoas/:estudanteId/matricula/:matriculaId
     static async pegaUmaMatricula(req, res) {
@@ -97,6 +120,62 @@ class PessoaController {
         try {
             await database.Matriculas.destroy({ where: { id: Number(matriculaId) } })
             return res.status(200).json({ mensagem: `Matricula com o ID ${matriculaId} foi deletada com sucesso.` })
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
+    static async pegaMatriculas(req, res) {
+        const { estudanteId } = req.params
+        try {
+            const pessoa = await database.Pessoas.findOne({ where: { id: Number(estudanteId) } })
+            const matriculas = await pessoa.getAulasMatriculadas()
+            return res.status(200).json(matriculas)
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
+    static async pegaMatriculasPorTurma(req, res) {
+        const { turmaId } = req.params
+        try {
+            const todasAsMatriculas = await database.Matriculas.findAndCountAll({
+                where: {
+                    turma_id: Number(turmaId),
+                    status: 'confirmado'
+                },
+                limit: 20,
+                order: [['estudante_id', 'DESC']]
+            })
+            return res.status(200).json(todasAsMatriculas)
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
+    static async pegaTurmasLotadas(req, res) {
+        const lotacaoTurma = 2
+        try {
+            const turmasLotadas = await database.Matriculas.findAndCountAll({
+                where: {
+                    status: 'confirmado'
+                },
+                attributes: ['turma_id'],
+                group: ['turma_id'],
+                having: Sequelize.literal(`count(turma_id) >= ${lotacaoTurma}`)
+            })
+            return res.status(200).json(turmasLotadas.count)
+        } catch (error) {
+            return res.status(500).json(error.message)
+        }
+    }
+
+    static async cancelaPessoa(req, res) {
+        const { estudanteId } = req.params
+        try {
+            await pessoasServices.cancelaPessoasEMatriculas(Number())
+            return res.status(200).json({ message: `matrículas ref. estudante ${estudanteId} canceladas` })
+
         } catch (error) {
             return res.status(500).json(error.message)
         }
